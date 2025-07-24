@@ -90,6 +90,7 @@ def predecir_cancelacion():
         etiqueta_prediccion = "Cancelado" if resultado_clase == 1 else "No Cancelado"
 
         app.logger.info(f"Predicción exitosa: Clase {resultado_clase} ({etiqueta_prediccion}) con probabilidad de cancelación {probabilidad_cancelacion:.4f}")
+        app.logger.info("Datod e etiqueta", etiqueta_prediccion)
 
         # 6. Devolver el resultado como JSON
         return jsonify({
