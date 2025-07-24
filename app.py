@@ -1,5 +1,4 @@
 # app.py
-# Importar las librerías necesarias
 from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
@@ -25,7 +24,6 @@ except Exception as e:
     modelo_cargado = None
 
 # 3. Definición de las características que el modelo espera
-# Estas son las características numéricas que mencionaste
 CARACTERISTICAS_ESPERADAS = [
     'num__total_a_pagar',
     'num__total_cantidad_productos',
@@ -35,60 +33,47 @@ CARACTERISTICAS_ESPERADAS = [
     'num__tasa_cancelaciones_historicas_cliente'
 ]
 
-# Características categóricas (si aplican, según tu notebook)
-CARACTERISTICAS_CATEGORICAS = ['tipo_cliente', 'canal_pedido']
-
 # 4. Creación del endpoint de predicción
 @app.route('/predecir', methods=['POST'])
 def predecir_cancelacion():
     """
     Endpoint para predecir la probabilidad de cancelación de un pedido.
-    Espera un JSON con las características requeridas por el modelo, incluyendo categóricas si aplica.
+    Espera un JSON con las 6 características numéricas requeridas por el modelo.
     Ejemplo de JSON esperado:
     {
-        "num__total_a_pagar": 3375.0,
-        "num__total_cantidad_productos": 9.0,
-        "num__total_productos_distintos": 3,
-        "num__stock_minimo_del_pedido": 0,
-        "num__total_categorias_distintas": 3,
-        "num__tasa_cancelaciones_historicas_cliente": 0.0,
-        "tipo_cliente": "NoCliente",
-        "canal_pedido": "Presencial"
+        "num__total_a_pagar": 8495.0,
+        "num__total_cantidad_productos": 29,
+        "num__total_productos_distintos": 7,
+        "num__stock_minimo_del_pedido": 516,
+        "num__total_categorias_distintas": 6,
+        "num__tasa_cancelaciones_historicas_cliente": 0.0
     }
     """
     # Verificar si el modelo se cargó correctamente
     if modelo_cargado is None:
+        app.logger.error("Modelo no disponible para predicciones.")
         return jsonify({'error': 'El modelo de predicción no está disponible. Revisa los logs del servidor.'}), 503
 
     # Obtener los datos JSON de la petición
     data = request.get_json()
     if not data:
+        app.logger.warning("No se recibieron datos en la petición.")
         return jsonify({'error': 'No se recibieron datos en la petición. Se esperaba un JSON.'}), 400
 
     app.logger.info(f"Petición recibida para predicción: {data}")
 
-    # Validar que las características numéricas estén presentes
+    # Validar que todas las características esperadas estén presentes
     if not all(feature in data for feature in CARACTERISTICAS_ESPERADAS):
         faltantes = [feature for feature in CARACTERISTICAS_ESPERADAS if feature not in data]
-        app.logger.warning(f"Petición inválida. Faltan características numéricas: {faltantes}")
+        app.logger.warning(f"Petición inválida. Faltan características: {faltantes}")
         return jsonify({
-            'error': 'Petición inválida. Faltan características numéricas requeridas.',
+            'error': 'Petición inválida. Faltan características requeridas.',
             'caracteristicas_faltantes': faltantes
         }), 400
 
-    # Validar características categóricas (si tu modelo las usa)
-    if CARACTERISTICAS_CATEGORICAS:
-        if not all(feature in data for feature in CARACTERISTICAS_CATEGORICAS):
-            faltantes = [feature for feature in CARACTERISTICAS_CATEGORICAS if feature not in data]
-            app.logger.warning(f"Petición inválida. Faltan características categóricas: {faltantes}")
-            return jsonify({
-                'error': 'Petición inválida. Faltan características categóricas requeridas.',
-                'caracteristicas_faltantes': faltantes
-            }), 400
-
     try:
-        # Crear un diccionario con todas las características esperadas
-        datos_para_predecir = {key: [data[key]] for key in CARACTERISTICAS_ESPERADAS + CARACTERISTICAS_CATEGORICAS}
+        # Crear un DataFrame con las características esperadas
+        datos_para_predecir = {key: [data[key]] for key in CARACTERISTICAS_ESPERADAS}
         df_prediccion = pd.DataFrame(datos_para_predecir)
 
         app.logger.info(f"DataFrame creado para la predicción:\n{df_prediccion.to_string()}")
@@ -99,12 +84,12 @@ def predecir_cancelacion():
 
         # Extraer los resultados
         resultado_clase = int(prediccion_clase[0])
-        probabilidad_cancelacion = float(prediccion_probabilidades[0][1])  # Probabilidad de la clase '1' (cancelación)
+        probabilidad_cancelacion = float(prediccion_probabilidades[0][1])  # Probabilidad de la clase '1' (Cancelado)
 
         # Mapear el resultado a una etiqueta legible
-        etiqueta_prediccion = "Pedido probablemente Cancelado" if resultado_clase == 1 else "Pedido probablemente No Cancelado"
+        etiqueta_prediccion = "Cancelado" if resultado_clase == 1 else "No Cancelado"
 
-        app.logger.info(f"Predicción exitosa: {etiqueta_prediccion} con probabilidad {probabilidad_cancelacion:.2f}")
+        app.logger.info(f"Predicción exitosa: Clase {resultado_clase} ({etiqueta_prediccion}) con probabilidad de cancelación {probabilidad_cancelacion:.4f}")
 
         # 6. Devolver el resultado como JSON
         return jsonify({
@@ -115,7 +100,7 @@ def predecir_cancelacion():
 
     except (ValueError, TypeError) as e:
         app.logger.error(f"Error en los tipos de datos recibidos: {e}")
-        return jsonify({'error': f'Error en los datos de entrada. Asegúrate de que los valores numéricos sean correctos y las categóricas sean válidas. Detalle: {e}'}), 400
+        return jsonify({'error': f'Error en los datos de entrada. Asegúrate de que los valores sean numéricos. Detalle: {e}'}), 400
     except Exception as e:
         app.logger.error(f"Ocurrió un error inesperado durante la predicción: {e}")
         return jsonify({'error': 'Ocurrió un error interno en el servidor.'}), 500
