@@ -14,9 +14,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(mess
 # 2. Carga del modelo entrenado (.pkl)
 #    Asegúrate de haber guardado el modelo correcto (el 'modelo_rf_basico').
 try:
-    # --- CAMBIO SUGERIDO: Carga el modelo básico que entrenaste ---
-    # Renombra tu archivo de modelo a 'modelo_cancelacion_basico.pkl' después de guardarlo.
-    modelo_cargado = joblib.load('modelo_cancelacion_basico.pkl')
+
+    modelo_cargado = joblib.load('modelo_random_forest_entrenado.pkl')
     app.logger.info("✅ Modelo de clasificación cargado correctamente.")
 except FileNotFoundError:
     app.logger.error("❌ Error Crítico: No se encontró el archivo 'modelo_cancelacion_basico.pkl'.")
@@ -70,10 +69,7 @@ def predecir_cancelacion():
         prediccion_probabilidades = modelo_cargado.predict_proba(df_prediccion)
         probabilidad_cancelacion = float(prediccion_probabilidades[0][1])
 
-        # --- ¡AQUÍ ESTÁ EL CAMBIO CLAVE! ---
-        # 6. Definir el umbral de decisión para marcar un pedido como de alto riesgo.
-        #    Puedes ajustar este valor según tus necesidades de negocio.
-        #    Un valor más alto (ej. 0.85) será más estricto y generará menos alertas.
+    
         UMBRAL_RIESGO = 0.85 
 
         # 7. Aplicar el umbral para determinar la clase y la etiqueta final
