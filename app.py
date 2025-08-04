@@ -74,7 +74,7 @@ def predecir_cancelacion():
         probabilidad_cancelacion = float(prediccion_probabilidades[0][1])
 
         # 6. Definición del umbral de decisión
-        UMBRAL_RIESGO = 0.80 
+        UMBRAL_RIESGO = 0.50 
 
         # 7. Aplicar el umbral para determinar la clase y la etiqueta final
         if probabilidad_cancelacion > UMBRAL_RIESGO:
